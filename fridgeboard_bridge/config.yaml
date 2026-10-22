@@ -1,0 +1,20 @@
+name: FridgeBoard Bridge
+version: "0.1.0"
+slug: fridgeboard_bridge
+description: Links Home Assistant to your FridgeBoard. Sensors and buttons can start dog walks, feed pets and tick chores; FridgeBoard fires fridgeboard_event for your automations.
+url: https://fridgeboard.me
+arch:
+  - amd64
+  - aarch64
+init: true
+startup: application
+boot: auto
+homeassistant_api: true
+ingress: true
+ingress_port: 8099
+panel_icon: mdi:fridge-outline
+panel_title: FridgeBoard
+options:
+  server: https://fridgeboard.me
+schema:
+  server: url

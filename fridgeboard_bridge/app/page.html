@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FridgeBoard Bridge</title>
+<style>
+  :root { --bg: #f4f5f7; --card: #fff; --text: #1c2b3a; --muted: #687687; --line: #e3e6ea; --accent: #2b6cb0; --good: #2f855a; --bad: #c53030; --chip: #eef2f6; }
+  @media (prefers-color-scheme: dark) { :root { --bg: #111418; --card: #1c2128; --text: #e8edf2; --muted: #95a1ae; --line: #2c333c; --accent: #63a4e8; --good: #68d391; --bad: #fc8181; --chip: #262d36; } }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.45 -apple-system, "Segoe UI", Roboto, sans-serif; }
+  main { max-width: 720px; margin: 0 auto; padding: 20px 16px 60px; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  h2 { font-size: 16px; margin: 0 0 10px; }
+  .status { color: var(--muted); margin-bottom: 18px; }
+  .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; background: var(--muted); }
+  .dot.on { background: var(--good); } .dot.off { background: var(--bad); }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px; margin-bottom: 16px; }
+  .muted { color: var(--muted); font-size: 13px; }
+  .err { color: var(--bad); margin-top: 8px; }
+  input[type=text], input[type=search] { font: inherit; color: inherit; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; width: 100%; }
+  #code { font-size: 22px; letter-spacing: 6px; text-transform: uppercase; text-align: center; max-width: 220px; }
+  button { font: inherit; font-weight: 600; border: 0; border-radius: 8px; padding: 10px 18px; background: var(--accent); color: #fff; cursor: pointer; }
+  button.plain { background: var(--chip); color: var(--text); }
+  button.danger { background: none; color: var(--bad); padding: 10px 0; }
+  button:disabled { opacity: .5; cursor: default; }
+  .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .area { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin: 16px 0 4px; }
+  label.ent { display: flex; align-items: center; gap: 12px; padding: 9px 2px; border-bottom: 1px solid var(--line); cursor: pointer; }
+  label.ent:last-child { border-bottom: 0; }
+  label.ent .name { flex: 1; min-width: 0; }
+  label.ent .id { display: block; font-size: 12px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  label.ent .state { font-size: 12px; color: var(--muted); background: var(--chip); border-radius: 6px; padding: 2px 8px; white-space: nowrap; max-width: 140px; overflow: hidden; text-overflow: ellipsis; }
+  label.ent input { width: 20px; height: 20px; accent-color: var(--accent); flex: none; }
+  .bar { position: sticky; bottom: 0; background: var(--card); border-top: 1px solid var(--line); padding: 12px 0 2px; margin-top: 8px; display: none; }
+  .bar.show { display: flex; }
+  .ev { border-bottom: 1px solid var(--line); padding: 10px 0; }
+  .ev:last-child { border-bottom: 0; }
+  .ev .t { font-weight: 600; }
+  .ev .t small { color: var(--muted); font-weight: 400; margin-left: 6px; }
+  pre { background: var(--bg); border-radius: 8px; padding: 10px; overflow-x: auto; font-size: 12px; margin: 6px 0 0; white-space: pre-wrap; word-break: break-word; }
+  code { font-size: 13px; background: var(--chip); padding: 1px 5px; border-radius: 4px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>FridgeBoard Bridge</h1>
+  <div class="status" id="status">Loading…</div>
+
+  <section class="card" id="link" hidden>
+    <h2>Link to your FridgeBoard</h2>
+    <p class="muted">On your phone, open FridgeBoard, then <b>Settings › Home Assistant › Link</b>. Type the 6-character code it shows.</p>
+    <div class="row"><input type="text" id="code" maxlength="6" autocomplete="off" spellcheck="false" placeholder="ABC123"><button id="linkBtn">Link</button></div>
+    <div class="err" id="linkErr"></div>
+  </section>
+
+  <section class="card" id="pick" hidden>
+    <h2>What FridgeBoard can use</h2>
+    <p class="muted">Tick the sensors, buttons and switches FridgeBoard may hear from, like a door sensor on the lead drawer or a button by the dog food. Nothing else ever leaves this house. Then set up what each one does in the FridgeBoard phone app.</p>
+    <input type="search" id="search" placeholder="Search">
+    <div id="list"></div>
+    <div class="bar" id="bar"><button id="saveBtn">Save</button>&nbsp;<button class="plain" id="undoBtn">Cancel</button></div>
+  </section>
+
+  <section class="card" id="events" hidden>
+    <h2>From FridgeBoard</h2>
+    <p class="muted">Each time something happens on FridgeBoard, it fires <code>fridgeboard_event</code> here. Use it as an automation's trigger, matching on what's below. For example, <code>event_type: fridgeboard_event</code> with <code>event_data: {type: routine_finished, person: Ben}</code>.</p>
+    <div id="evlist"></div>
+  </section>
+
+  <section id="unlinkBox" hidden><button class="danger" id="unlinkBtn">Unlink from FridgeBoard</button></section>
+</main>
+<script>
+(function () {
+  var S = null, chosen = null, $ = function (id) { return document.getElementById(id); };
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function call(method, p, body) {
+    return fetch(p, { method: method, headers: body ? { 'Content-Type': 'application/json' } : {}, body: body ? JSON.stringify(body) : undefined })
+      .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || 'That didn\'t work'); return j; }); });
+  }
+  function ago(t) { var s = Math.round((Date.now() - t) / 1000); return s < 60 ? 'just now' : s < 3600 ? Math.round(s / 60) + ' min ago' : new Date(t).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }); }
+  function dirty() { return chosen && JSON.stringify(chosen.slice().sort()) !== JSON.stringify(S.entities.filter(function (e) { return e.ticked; }).map(function (e) { return e.id; }).sort()); }
+
+  function draw() {
+    var st = $('status');
+    if (!S.ha) st.innerHTML = '<span class="dot off"></span>' + esc(S.haError || 'Connecting to Home Assistant…');
+    else if (!S.linked) st.innerHTML = '<span class="dot"></span>Not linked to FridgeBoard' + (S.fbError ? '. ' + esc(S.fbError) : '');
+    else st.innerHTML = '<span class="dot ' + (S.online ? 'on' : 'off') + '"></span>' + (S.online ? 'Linked to ' : 'Can\'t reach FridgeBoard right now. Linked to ') + '<b>' + esc(S.household || 'your household') + '</b>' + (S.fbError && !S.online ? '. ' + esc(S.fbError) : '');
+    $('link').hidden = S.linked;
+    $('pick').hidden = $('events').hidden = $('unlinkBox').hidden = !S.linked;
+    if (!S.linked) return;
+    if (!chosen) chosen = S.entities.filter(function (e) { return e.ticked; }).map(function (e) { return e.id; });
+    drawList();
+    drawEvents();
+  }
+  function drawList() {
+    var q = $('search').value.trim().toLowerCase(), area = null, html = '';
+    var list = S.entities.filter(function (e) { return !q || (e.name + ' ' + e.id + ' ' + e.area).toLowerCase().indexOf(q) >= 0; });
+    // ticked ones first, so what's in use is easy to see
+    list.sort(function (a, b) { return (chosen.indexOf(b.id) >= 0) - (chosen.indexOf(a.id) >= 0); });
+    var seenTicked = false;
+    list.forEach(function (e) {
+      var on = chosen.indexOf(e.id) >= 0, group = on ? 'Ticked' : e.area || 'No area';
+      if (group !== area) { html += '<div class="area">' + esc(group) + '</div>'; area = group; }
+      if (on) seenTicked = true;
+      html += '<label class="ent"><input type="checkbox" data-id="' + esc(e.id) + '"' + (on ? ' checked' : '') + '><span class="name">' + esc(e.name) + '<span class="id">' + esc(e.id) + '</span></span><span class="state">' + esc(e.state) + '</span></label>';
+    });
+    if (!list.length) html = '<p class="muted">' + (q ? 'Nothing matches.' : 'No sensors, buttons or switches found yet.') + '</p>';
+    if (S.missing.length) html += '<p class="muted">Ticked but not in Home Assistant now: ' + esc(S.missing.join(', ')) + '</p>';
+    $('list').innerHTML = html;
+    $('bar').className = 'bar' + (dirty() ? ' show' : '');
+  }
+  function drawEvents() {
+    var out = S.recent.filter(function (r) { return r.dir === 'out'; });
+    $('evlist').innerHTML = out.length ? out.map(function (r) {
+      var d = {}; Object.keys(r.data).forEach(function (k) { if (r.data[k] !== null && r.data[k] !== '' && !/_id$/.test(k)) d[k] = r.data[k]; });
+      return '<div class="ev"><div class="t">' + esc(r.type) + '<small>' + ago(r.at) + '</small></div><pre>' + esc(Object.keys(d).map(function (k) { return k + ': ' + (Array.isArray(d[k]) ? '[' + d[k].join(', ') + ']' : d[k]); }).join('\n')) + '</pre></div>';
+    }).join('') : '<p class="muted">Nothing yet. Tick a chore or start a routine on FridgeBoard and it shows here.</p>';
+  }
+  function load() { return call('GET', 'api/state').then(function (s) { S = s; draw(); }).catch(function () { $('status').textContent = 'The bridge isn\'t answering.'; }); }
+
+  $('list').addEventListener('change', function (e) {
+    var id = e.target.getAttribute('data-id');
+    if (!id) return;
+    chosen = chosen.filter(function (x) { return x !== id; });
+    if (e.target.checked) chosen.push(id);
+    $('bar').className = 'bar' + (dirty() ? ' show' : '');
+  });
+  $('search').addEventListener('input', drawList);
+  $('saveBtn').onclick = function () {
+    $('saveBtn').disabled = true;
+    call('POST', 'api/ticked', { ids: chosen }).then(function () { chosen = null; return load(); }).catch(function (e) { alert(e.message); }).then(function () { $('saveBtn').disabled = false; });
+  };
+  $('undoBtn').onclick = function () { chosen = null; draw(); };
+  $('linkBtn').onclick = function () {
+    $('linkErr').textContent = ''; $('linkBtn').disabled = true;
+    call('POST', 'api/link', { code: $('code').value }).then(function () { $('code').value = ''; return load(); })
+      .catch(function (e) { $('linkErr').textContent = e.message; }).then(function () { $('linkBtn').disabled = false; });
+  };
+  $('code').addEventListener('keydown', function (e) { if (e.key === 'Enter') $('linkBtn').click(); });
+  $('unlinkBtn').onclick = function () {
+    if (!confirm('Unlink from FridgeBoard? Your rules are kept on FridgeBoard in case you link again.')) return;
+    call('POST', 'api/unlink').then(function () { chosen = null; return load(); });
+  };
+  load();
+  setInterval(function () { if (!dirty() && document.activeElement !== $('search')) load(); }, 5000);
+})();
+</script>
+</body>
+</html>
