@@ -45,8 +45,10 @@ Your automations can also ask FridgeBoard to do something, by firing a `fridgebo
 ```yaml
 action:
   - event: fridgeboard
-    event_data: {action: walk, pet: Max}   # walk, walk_start, walk_end, feed, chore (task, person), shopping (item)
+    event_data: {action: walk, pet: Max}   # walk, walk_start, walk_end, feed, chore (task, person), shopping (item), wake (screen)
 ```
+
+`wake` wakes a screen from its sleep screen, like `{action: wake, screen: Kitchen}` (the screen's name as FridgeBoard shows it). Leave `screen` out to wake every screen.
 
 ## Options
 
