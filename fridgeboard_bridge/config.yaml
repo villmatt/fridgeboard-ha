@@ -1,5 +1,5 @@
 name: FridgeBoard Bridge
-version: "0.2.0"
+version: "0.3.0"
 slug: fridgeboard_bridge
 description: Links Home Assistant to your FridgeBoard. Sensors and buttons can start dog walks, feed pets, give medicine and tick chores and routine steps; lights, scenes and sensors can go on the shared screen; FridgeBoard fires fridgeboard_event for your automations.
 url: https://fridgeboard.me

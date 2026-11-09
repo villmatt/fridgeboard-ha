@@ -16,7 +16,7 @@ var http = require('http');
 var fs = require('fs');
 var path = require('path');
 
-var VERSION = '0.2.0';
+var VERSION = '0.3.0';
 var DATA = process.env.DATA_DIR || path.join(__dirname, 'data');
 var PORT = +process.env.PORT || 8099;
 var FILE = path.join(DATA, 'bridge.json');
@@ -26,7 +26,10 @@ var FILE = path.join(DATA, 'bridge.json');
 var PICKABLE = /^(binary_sensor|event|button|input_button|input_boolean|switch|light|fan|scene|script|sensor)\./;
 // A Smart home tile tapped on FridgeBoard ({"do": { id, verb }}): the service it calls, by the kind of thing
 var DO = { toggle: { light: 'light.toggle', switch: 'switch.toggle', fan: 'fan.toggle', input_boolean: 'input_boolean.toggle' },
+  on: { light: 'light.turn_on', switch: 'switch.turn_on', fan: 'fan.turn_on', input_boolean: 'input_boolean.turn_on' },
+  off: { light: 'light.turn_off', switch: 'switch.turn_off', fan: 'fan.turn_off', input_boolean: 'input_boolean.turn_off' },
   run: { scene: 'scene.turn_on', script: 'script.turn_on', button: 'button.press', input_button: 'input_button.press' } };
+var COLOUR_MODES = { hs: 1, rgb: 1, rgbw: 1, rgbww: 1, xy: 1 }; // a light showing a colour (not just a shade of white)
 var SENSOR_EVERY = 60000; // a sensor's reading goes to FridgeBoard once a minute at most (a power meter changes every second)
 var RECENT = 20;
 
@@ -62,7 +65,14 @@ function haSend(type, extra, cb) {
   return id;
 }
 // An entity's state as FridgeBoard needs it: { id, state, ev (an event entity's event_type) }
-function slim(s) { return { id: s.entity_id, state: s.state, ev: (s.attributes && s.attributes.event_type) || '' }; }
+function slim(s) {
+  var at = s.attributes || {}, o = { id: s.entity_id, state: s.state, ev: at.event_type || '' };
+  if (/^light\./.test(s.entity_id)) { // its brightness (0-100) and, in a colour, the colour
+    if (typeof at.brightness === 'number') o.b = Math.round(at.brightness / 2.55);
+    if (COLOUR_MODES[at.color_mode] && Array.isArray(at.rgb_color)) o.c = '#' + at.rgb_color.map(function (v) { return ('0' + Math.max(0, Math.min(255, Math.round(v))).toString(16)).slice(-2); }).join('');
+  }
+  return o;
+}
 function haConnect() {
   var at = haUrl();
   if (!at) { ha.error = 'No Home Assistant to talk to (set HA_URL and HA_TOKEN outside an add-on)'; return; }
@@ -124,7 +134,7 @@ function haEvent(ev) {
   ha.states[cur.entity_id] = cur;
   if (store.ticked.indexOf(cur.entity_id) < 0) return; // never sent: it wasn't ticked
   var a = slim(cur), b = old ? slim(old) : null;
-  if (b && a.state === b.state && a.ev === b.ev) return; // just its attributes changed
+  if (b && a.state === b.state && a.ev === b.ev && a.b === b.b && a.c === b.c) return; // just other attributes changed
   if (/^sensor\./.test(a.id)) return sensorSend(a.id);
   fbSend({ states: [a] });
 }
@@ -140,8 +150,10 @@ function sensorSend(id) {
 function doTile(d) {
   var id = String((d && d.id) || ''), dom = id.split('.')[0], svc = DO[d && d.verb] && DO[d.verb][dom];
   if (store.ticked.indexOf(id) < 0 || !svc) { note('in', 'error', { message: 'Not allowed: ' + id }); return; }
-  note('in', 'tap', { entity: id, service: svc });
-  haSend('call_service', { domain: svc.split('.')[0], service: svc.split('.')[1], target: { entity_id: id } }, function (err) {
+  var data = {};
+  if (d.verb === 'on' && dom === 'light' && d.level >= 1 && d.level <= 100) data.brightness_pct = Math.round(d.level);
+  note('in', 'tap', { entity: id, service: svc, level: data.brightness_pct || '' });
+  haSend('call_service', { domain: svc.split('.')[0], service: svc.split('.')[1], target: { entity_id: id }, service_data: data }, function (err) {
     if (err) { log('Tap on ' + id + ' failed: ' + err.message); note('in', 'error', { message: id + ': ' + err.message }); }
   });
 }
@@ -154,7 +166,8 @@ function entitiesOut() {
     var s = ha.states[id], at = (s && s.attributes) || {};
     var o = { id: id, name: at.friendly_name || id, area: ha.areaOf[id] || '' };
     if (at.device_class) o.kind = String(at.device_class); // door, window, motion: how the phone words a rule
-    if (at.unit_of_measurement) o.unit = String(at.unit_of_measurement); // a sensor's °C or %, after its reading on the Smart home card
+    if (at.unit_of_measurement) o.unit = String(at.unit_of_measurement); // a sensor's °C or %, after its reading on its tile
+    if (/^light\./.test(id) && Array.isArray(at.supported_color_modes) && at.supported_color_modes.some(function (m) { return m !== 'onoff'; })) o.dim = true; // it dims
     if (Array.isArray(at.event_types)) o.presses = at.event_types.map(String); // a remote's single_press, double_press
     return o;
   });

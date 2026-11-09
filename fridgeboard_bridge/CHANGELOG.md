@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.0
+
+- Lights can be dimmed from the shared screen (swipe across a light's tile), and turned on or off rather than just toggled.
+- A light's brightness, and its colour when it's showing one, go to FridgeBoard so its tile shows them.
+
 ## 0.2.0
 
 - Lights, switches, fans, scenes, scripts and sensors can be ticked, for the shared screen's new Smart home card. A tap on the card turns a light on or off, or runs a scene.
