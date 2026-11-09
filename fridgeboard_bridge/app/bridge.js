@@ -16,7 +16,7 @@ var http = require('http');
 var fs = require('fs');
 var path = require('path');
 
-var VERSION = '0.3.0';
+var VERSION = '0.4.0';
 var DATA = process.env.DATA_DIR || path.join(__dirname, 'data');
 var PORT = +process.env.PORT || 8099;
 var FILE = path.join(DATA, 'bridge.json');
@@ -72,6 +72,7 @@ function slim(s) {
     if (typeof at.brightness === 'number') o.b = Math.round(at.brightness / 2.55);
     if (COLOUR_MODES[at.color_mode] && Array.isArray(at.rgb_color)) o.c = '#' + at.rgb_color.map(function (v) { return ('0' + Math.max(0, Math.min(255, Math.round(v))).toString(16)).slice(-2); }).join('');
   }
+  if (/^fan\./.test(s.entity_id) && typeof at.percentage === 'number') o.b = Math.round(at.percentage); // a fan's speed (0-100), like a light's brightness
   return o;
 }
 function haConnect() {
@@ -153,7 +154,8 @@ function doTile(d) {
   if (store.ticked.indexOf(id) < 0 || !svc) { note('in', 'error', { message: 'Not allowed: ' + id }); return; }
   var data = {};
   if (d.verb === 'on' && dom === 'light' && d.level >= 1 && d.level <= 100) data.brightness_pct = Math.round(d.level);
-  note('in', 'tap', { entity: id, service: svc, level: data.brightness_pct || '' });
+  if (d.verb === 'on' && dom === 'fan' && d.level >= 1 && d.level <= 100) data.percentage = Math.round(d.level); // a fan's speed
+  note('in', 'tap', { entity: id, service: svc, level: data.brightness_pct || data.percentage || '' });
   haSend('call_service', { domain: svc.split('.')[0], service: svc.split('.')[1], target: { entity_id: id }, service_data: data }, function (err) {
     if (err) { log('Tap on ' + id + ' failed: ' + err.message); note('in', 'error', { message: id + ': ' + err.message }); }
   });
@@ -169,6 +171,10 @@ function entitiesOut() {
     if (at.device_class) o.kind = String(at.device_class); // door, window, motion: how the phone words a rule
     if (at.unit_of_measurement) o.unit = String(at.unit_of_measurement); // a sensor's °C or %, after its reading on its tile
     if (/^light\./.test(id) && Array.isArray(at.supported_color_modes) && at.supported_color_modes.some(function (m) { return m !== 'onoff'; })) o.dim = true; // it dims
+    if (/^fan\./.test(id) && (at.supported_features & 1)) { // a fan with speeds: swiped like a light that dims
+      o.dim = true;
+      if (at.percentage_step > 0 && at.percentage_step < 100) o.steps = Math.round(100 / at.percentage_step); // how many speeds it has (3: low, medium, high)
+    }
     if (Array.isArray(at.event_types)) o.presses = at.event_types.map(String); // a remote's single_press, double_press
     return o;
   });

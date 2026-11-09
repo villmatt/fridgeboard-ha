@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.4.0
+
+- Fans with speeds can have their speed set from the shared screen: swipe across a fan's tile, like dimming a light. It moves between the fan's own speeds.
+- A fan's speed goes to FridgeBoard so its tile shows it.
+- Every tile can have its own colour now, scenes and sensors too (their icon's corner).
+
 ## 0.3.0
 
 - Lights can be dimmed from the shared screen (swipe across a light's tile), and turned on or off rather than just toggled.
