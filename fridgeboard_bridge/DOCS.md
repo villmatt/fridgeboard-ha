@@ -3,7 +3,7 @@
 Links this Home Assistant to your FridgeBoard.
 
 - **Sensors and buttons do things on FridgeBoard.** A door sensor on the drawer where the lead lives can start the dog's walk, and end it next time it opens. A button by the food can mark a pet fed. A button on the pill bottle can mark a medicine given. A sensor or a button can tick a chore or a step in a routine.
-- **Your lights and sensors on the shared screen.** Lights, switches, scenes, scripts and sensors go on Home as tiles. Swipe across a light to dim it, tap its icon to turn it on or off, or tap a scene to run it.
+- **Your lights and sensors on the shared screen.** Lights, switches, scenes, scripts and sensors go on Home as tiles. Swipe across a light to dim it, tap it to turn it on or off, or tap a scene to run it.
 - **FridgeBoard tells Home Assistant what happened.** Each chore ticked, routine started or finished, walk, feed and medicine fires a `fridgeboard_event`, for your own automations.
 - **Your automations can do things on FridgeBoard.** Give a medicine, tick a chore, a job or a routine step, add to any list, or put a message on the shared screens.
 
@@ -24,7 +24,7 @@ Step-by-step guides and ready-made blueprints: https://fridgeboard.me/home-assis
 
 | Kind | On its tile |
 | --- | --- |
-| `light` that dims | swipe across to set the level, all the way down for off; its icon turns it on or off. A coloured bulb's tile shows its colour |
+| `light` that dims | swipe across to set the level, all the way down for off; a tap turns it on or off. A coloured bulb's tile shows its colour |
 | `light` that doesn't dim, `switch`, `fan`, `input_boolean` | a tap turns it on or off |
 | `scene`, `script`, `button`, `input_button` | a tap runs it |
 | `sensor`, `binary_sensor` | it shows the reading (temperature, humidity, a door open or closed) |
