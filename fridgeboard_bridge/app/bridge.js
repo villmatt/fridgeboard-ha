@@ -30,13 +30,14 @@ var DO = { toggle: { light: 'light.toggle', switch: 'switch.toggle', fan: 'fan.t
   off: { light: 'light.turn_off', switch: 'switch.turn_off', fan: 'fan.turn_off', input_boolean: 'input_boolean.turn_off' },
   run: { scene: 'scene.turn_on', script: 'script.turn_on', button: 'button.press', input_button: 'input_button.press' } };
 var COLOUR_MODES = { hs: 1, rgb: 1, rgbw: 1, rgbww: 1, xy: 1 }; // a light showing a colour (not just a shade of white)
+var TILE = /^(light|switch|fan|input_boolean|scene|script|button|input_button|sensor|binary_sensor)\./; // what can be a tile on the shared screen (named and given an icon here)
 var SENSOR_EVERY = 60000; // a sensor's reading goes to FridgeBoard once a minute at most (a power meter changes every second)
 var RECENT = 20;
 
 function log() { console.log.apply(console, [new Date().toISOString().slice(11, 19)].concat([].slice.call(arguments))); }
 
 // ---------- what's kept: /data/bridge.json (in HA's backups) ----------
-var store = { token: '', household: '', ticked: [] };
+var store = { token: '', household: '', ticked: [], labels: {} }; // labels: the family's own names and icons, as FridgeBoard last said
 try { Object.assign(store, JSON.parse(fs.readFileSync(FILE, 'utf8'))); } catch (e) {}
 function save() {
   try { fs.mkdirSync(DATA, { recursive: true }); fs.writeFileSync(FILE + '.tmp', JSON.stringify(store)); fs.renameSync(FILE + '.tmp', FILE); }
@@ -196,6 +197,7 @@ function fbConnect() {
       fb.beat = setInterval(function () { fbSend({ p: 1 }); }, 30000); // CloudFront closes a socket that's quiet for a minute
       return fbSendAll();
     }
+    if (msg.labels && typeof msg.labels === 'object') { store.labels = msg.labels; save(); return; } // the family's own names and icons
     if (msg.fire) { // something happened on FridgeBoard: fired in HA for the family's automations
       var data = Object.assign({ type: msg.fire.type }, msg.fire.data || {});
       note('out', msg.fire.type, data);
@@ -241,7 +243,8 @@ function readBody(req, cb) {
 function stateOf() {
   var all = Object.keys(ha.states).filter(function (id) { return PICKABLE.test(id); }).map(function (id) {
     var s = ha.states[id];
-    return { id: id, name: (s.attributes && s.attributes.friendly_name) || id, area: ha.areaOf[id] || '', state: s.state, ticked: store.ticked.indexOf(id) >= 0 };
+    var lb = (store.labels || {})[id] || {};
+    return { id: id, name: (s.attributes && s.attributes.friendly_name) || id, area: ha.areaOf[id] || '', state: s.state, ticked: store.ticked.indexOf(id) >= 0, tile: TILE.test(id), own: lb.name || '', icon: lb.icon || '' };
   }).sort(function (a, b) { return (a.area || '~').localeCompare(b.area || '~') || a.name.localeCompare(b.name); });
   return { version: VERSION, server: server(), linked: !!store.token, household: store.household, online: fb.live, fbError: fb.error,
     ha: ha.live, haError: ha.error, entities: all, missing: store.ticked.filter(function (id) { return !ha.states[id]; }), recent: recent };
@@ -272,6 +275,13 @@ http.createServer(function (req, res) {
       var ids = (Array.isArray(a.ids) ? a.ids : []).map(String).filter(function (id, i, all) { return PICKABLE.test(id) && all.indexOf(id) === i; }).slice(0, 300);
       store.ticked = ids; save();
       fbSendAll();
+      // names and icons changed here: to FridgeBoard, which sends them all back (labels)
+      var lb = a.labels && typeof a.labels === 'object' ? a.labels : {};
+      Object.keys(lb).slice(0, 300).forEach(function (id) {
+        if (ids.indexOf(id) < 0 || !TILE.test(id)) return;
+        var was = (store.labels || {})[id] || {}, now = lb[id] || {}, name = String(now.name || '').slice(0, 40), icon = String(now.icon || '').slice(0, 16);
+        if (name !== (was.name || '') || icon !== (was.icon || '')) fbSend({ label: { id: id, name: name, icon: icon } });
+      });
       send(res, 200, { ok: true });
     });
   }
