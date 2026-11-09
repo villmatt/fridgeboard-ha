@@ -56,7 +56,7 @@
 
   <section class="card" id="pick" hidden>
     <h2>What FridgeBoard can use</h2>
-    <p class="muted">Tick the sensors, buttons and switches FridgeBoard may hear from, like a door sensor on the lead drawer or a button by the dog food. Nothing else ever leaves this house. Then set up what each one does in the FridgeBoard phone app.</p>
+    <p class="muted">Tick what FridgeBoard may use: sensors and buttons that do something on FridgeBoard (a door sensor on the lead drawer, a button by the dog food), and lights, switches, scenes, scripts and sensors to show on the shared screen's Smart home card. Nothing unticked ever leaves this house. Then set up what each one does in the FridgeBoard phone app, under Settings › Home Assistant.</p>
     <input type="search" id="search" placeholder="Search">
     <div id="list"></div>
     <div class="bar" id="bar"><button id="saveBtn">Save</button>&nbsp;<button class="plain" id="undoBtn">Cancel</button></div>
@@ -105,7 +105,7 @@
       if (on) seenTicked = true;
       html += '<label class="ent"><input type="checkbox" data-id="' + esc(e.id) + '"' + (on ? ' checked' : '') + '><span class="name">' + esc(e.name) + '<span class="id">' + esc(e.id) + '</span></span><span class="state">' + esc(e.state) + '</span></label>';
     });
-    if (!list.length) html = '<p class="muted">' + (q ? 'Nothing matches.' : 'No sensors, buttons or switches found yet.') + '</p>';
+    if (!list.length) html = '<p class="muted">' + (q ? 'Nothing matches.' : 'Nothing found yet.') + '</p>';
     if (S.missing.length) html += '<p class="muted">Ticked but not in Home Assistant now: ' + esc(S.missing.join(', ')) + '</p>';
     $('list').innerHTML = html;
     $('bar').className = 'bar' + (dirty() ? ' show' : '');

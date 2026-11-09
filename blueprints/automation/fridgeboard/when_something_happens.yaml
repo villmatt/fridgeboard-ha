@@ -1,0 +1,66 @@
+blueprint:
+  name: FridgeBoard - when something happens
+  description: >
+    Do something in your home when something happens on FridgeBoard: a routine is finished,
+    a chore is ticked, the dog's walk starts or ends, a pet is fed or a medicine is given.
+    For example, dim the hall light when Bedtime is finished, or play a sound when the bins are done.
+    Needs the FridgeBoard Bridge app, linked to your FridgeBoard.
+  domain: automation
+  source_url: https://github.com/villmatt/fridgeboard-ha/blob/main/blueprints/automation/fridgeboard/when_something_happens.yaml
+  input:
+    what:
+      name: When this happens on FridgeBoard
+      selector:
+        select:
+          options:
+            - label: A routine is finished
+              value: routine_finished
+            - label: A routine is started
+              value: routine_started
+            - label: A chore or job is ticked
+              value: chore_done
+            - label: A walk starts
+              value: walk_started
+            - label: A walk ends
+              value: walk_ended
+            - label: A pet is fed
+              value: pet_fed
+            - label: A medicine is given
+              value: medicine_given
+    name_is:
+      name: Only for this routine, chore, pet or medicine
+      description: Its name as FridgeBoard shows it, like Bedtime or Bins. Leave it empty for any.
+      default: ""
+      selector:
+        text: {}
+    person_is:
+      name: Only when it's this person
+      description: Their name as FridgeBoard shows it, like Ben. Leave it empty for anyone.
+      default: ""
+      selector:
+        text: {}
+    then:
+      name: Then do this
+      selector:
+        action: {}
+mode: queued
+variables:
+  name_is: !input name_is
+  person_is: !input person_is
+triggers:
+  - trigger: event
+    event_type: fridgeboard_event
+    event_data:
+      type: !input what
+conditions:
+  - condition: template
+    value_template: >
+      {% set d = trigger.event.data %}
+      {% set n = name_is | string | lower | trim %}
+      {% set names = [d.get('routine', ''), d.get('task', ''), d.get('pet', ''), d.get('medicine', '')] + (d.get('pets') or []) %}
+      {{ n == '' or n in (names | map('string') | map('lower') | list) }}
+  - condition: template
+    value_template: >
+      {% set p = person_is | string | lower | trim %}
+      {{ p == '' or (trigger.event.data.get('person') or '') | lower == p }}
+actions: !input then

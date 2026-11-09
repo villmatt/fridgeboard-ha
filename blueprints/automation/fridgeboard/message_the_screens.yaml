@@ -1,0 +1,56 @@
+blueprint:
+  name: FridgeBoard - message the shared screens
+  description: >
+    Put a message on FridgeBoard's shared screens when something changes in your home, like
+    "The washing's done" when the washing machine's power drops, or "Someone's at the door"
+    when the doorbell's pressed. It shows until someone taps Got it.
+    Needs the FridgeBoard Bridge app, linked to your FridgeBoard.
+  domain: automation
+  source_url: https://github.com/villmatt/fridgeboard-ha/blob/main/blueprints/automation/fridgeboard/message_the_screens.yaml
+  input:
+    watch:
+      name: When this changes
+      selector:
+        entity: {}
+    to_state:
+      name: To this
+      description: The state it changes to, like off, on or open. Leave it empty for any change.
+      default: ""
+      selector:
+        text: {}
+    message:
+      name: The message
+      selector:
+        text: {}
+    screen:
+      name: On this screen only
+      description: The screen's name as FridgeBoard shows it, like Kitchen. Leave it empty for every screen.
+      default: ""
+      selector:
+        text: {}
+    urgent:
+      name: Keep ringing until someone taps Got it
+      default: false
+      selector:
+        boolean: {}
+mode: single
+max_exceeded: silent
+variables:
+  to_state: !input to_state
+triggers:
+  - trigger: state
+    entity_id: !input watch
+conditions:
+  - condition: template
+    value_template: >
+      {{ trigger.from_state is not none and trigger.to_state is not none
+         and trigger.from_state.state != trigger.to_state.state
+         and trigger.to_state.state not in ['unavailable', 'unknown']
+         and (to_state | string | trim == '' or trigger.to_state.state == to_state | string | trim) }}
+actions:
+  - event: fridgeboard
+    event_data:
+      action: message
+      text: !input message
+      screen: !input screen
+      urgent: !input urgent

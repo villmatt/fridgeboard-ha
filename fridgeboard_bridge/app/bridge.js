@@ -16,13 +16,18 @@ var http = require('http');
 var fs = require('fs');
 var path = require('path');
 
-var VERSION = '0.1.0';
+var VERSION = '0.2.0';
 var DATA = process.env.DATA_DIR || path.join(__dirname, 'data');
 var PORT = +process.env.PORT || 8099;
 var FILE = path.join(DATA, 'bridge.json');
 // What can be ticked: things that can start something on FridgeBoard (a contact sensor, a button, a
-// switch). Locks, doors and alarms stay out until the board has tiles for them.
-var PICKABLE = /^(binary_sensor|event|button|input_button|input_boolean|switch)\./;
+// switch), and what can go on its Smart home card (lights, fans, scenes, scripts, a sensor's reading).
+// Locks, garage doors and alarms stay out.
+var PICKABLE = /^(binary_sensor|event|button|input_button|input_boolean|switch|light|fan|scene|script|sensor)\./;
+// A Smart home tile tapped on FridgeBoard ({"do": { id, verb }}): the service it calls, by the kind of thing
+var DO = { toggle: { light: 'light.toggle', switch: 'switch.toggle', fan: 'fan.toggle', input_boolean: 'input_boolean.toggle' },
+  run: { scene: 'scene.turn_on', script: 'script.turn_on', button: 'button.press', input_button: 'input_button.press' } };
+var SENSOR_EVERY = 60000; // a sensor's reading goes to FridgeBoard once a minute at most (a power meter changes every second)
 var RECENT = 20;
 
 function log() { console.log.apply(console, [new Date().toISOString().slice(11, 19)].concat([].slice.call(arguments))); }
@@ -120,7 +125,25 @@ function haEvent(ev) {
   if (store.ticked.indexOf(cur.entity_id) < 0) return; // never sent: it wasn't ticked
   var a = slim(cur), b = old ? slim(old) : null;
   if (b && a.state === b.state && a.ev === b.ev) return; // just its attributes changed
+  if (/^sensor\./.test(a.id)) return sensorSend(a.id);
   fbSend({ states: [a] });
+}
+// A sensor's reading: now, or when its minute's up (the latest then)
+var sensorAt = {}, sensorWait = {};
+function sensorSend(id) {
+  var gap = Date.now() - (sensorAt[id] || 0);
+  if (gap < SENSOR_EVERY) { if (!sensorWait[id]) sensorWait[id] = setTimeout(function () { delete sensorWait[id]; sensorSend(id); }, SENSOR_EVERY - gap); return; }
+  sensorAt[id] = Date.now();
+  if (ha.states[id]) fbSend({ states: [slim(ha.states[id])] });
+}
+// A Smart home tile tapped on FridgeBoard: only a ticked entity, only the services above
+function doTile(d) {
+  var id = String((d && d.id) || ''), dom = id.split('.')[0], svc = DO[d && d.verb] && DO[d.verb][dom];
+  if (store.ticked.indexOf(id) < 0 || !svc) { note('in', 'error', { message: 'Not allowed: ' + id }); return; }
+  note('in', 'tap', { entity: id, service: svc });
+  haSend('call_service', { domain: svc.split('.')[0], service: svc.split('.')[1], target: { entity_id: id } }, function (err) {
+    if (err) { log('Tap on ' + id + ' failed: ' + err.message); note('in', 'error', { message: id + ': ' + err.message }); }
+  });
 }
 
 // ---------- FridgeBoard ----------
@@ -131,6 +154,7 @@ function entitiesOut() {
     var s = ha.states[id], at = (s && s.attributes) || {};
     var o = { id: id, name: at.friendly_name || id, area: ha.areaOf[id] || '' };
     if (at.device_class) o.kind = String(at.device_class); // door, window, motion: how the phone words a rule
+    if (at.unit_of_measurement) o.unit = String(at.unit_of_measurement); // a sensor's °C or %, after its reading on the Smart home card
     if (Array.isArray(at.event_types)) o.presses = at.event_types.map(String); // a remote's single_press, double_press
     return o;
   });
@@ -164,6 +188,7 @@ function fbConnect() {
       note('out', msg.fire.type, data);
       return haSend('fire_event', { event_type: 'fridgeboard_event', event_data: data });
     }
+    if (msg.do) return doTile(msg.do);
     if (msg.error) { note('in', 'error', { message: msg.error }); log('FridgeBoard said: ' + msg.error); }
   };
   ws.onclose = function (e) {
