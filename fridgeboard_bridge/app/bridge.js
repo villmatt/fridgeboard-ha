@@ -244,7 +244,7 @@ function stateOf() {
   var all = Object.keys(ha.states).filter(function (id) { return PICKABLE.test(id); }).map(function (id) {
     var s = ha.states[id];
     var lb = (store.labels || {})[id] || {};
-    return { id: id, name: (s.attributes && s.attributes.friendly_name) || id, area: ha.areaOf[id] || '', state: s.state, ticked: store.ticked.indexOf(id) >= 0, tile: TILE.test(id), own: lb.name || '', icon: lb.icon || '' };
+    return { id: id, name: (s.attributes && s.attributes.friendly_name) || id, area: ha.areaOf[id] || '', state: s.state, ticked: store.ticked.indexOf(id) >= 0, tile: TILE.test(id), own: lb.name || '', icon: lb.icon || '', color: lb.color || '' };
   }).sort(function (a, b) { return (a.area || '~').localeCompare(b.area || '~') || a.name.localeCompare(b.name); });
   return { version: VERSION, server: server(), linked: !!store.token, household: store.household, online: fb.live, fbError: fb.error,
     ha: ha.live, haError: ha.error, entities: all, missing: store.ticked.filter(function (id) { return !ha.states[id]; }), recent: recent };
@@ -279,8 +279,8 @@ http.createServer(function (req, res) {
       var lb = a.labels && typeof a.labels === 'object' ? a.labels : {};
       Object.keys(lb).slice(0, 300).forEach(function (id) {
         if (ids.indexOf(id) < 0 || !TILE.test(id)) return;
-        var was = (store.labels || {})[id] || {}, now = lb[id] || {}, name = String(now.name || '').slice(0, 40), icon = String(now.icon || '').slice(0, 16);
-        if (name !== (was.name || '') || icon !== (was.icon || '')) fbSend({ label: { id: id, name: name, icon: icon } });
+        var was = (store.labels || {})[id] || {}, now = lb[id] || {}, name = String(now.name || '').slice(0, 40), icon = String(now.icon || '').slice(0, 24), color = /^#[0-9a-f]{6}$/i.test(String(now.color || '')) ? String(now.color).toLowerCase() : '';
+        if (name !== (was.name || '') || icon !== (was.icon || '') || color !== (was.color || '')) fbSend({ label: { id: id, name: name, icon: icon, color: color } });
       });
       send(res, 200, { ok: true });
     });
