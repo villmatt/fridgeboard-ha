@@ -21,16 +21,17 @@ var DATA = process.env.DATA_DIR || path.join(__dirname, 'data');
 var PORT = +process.env.PORT || 8099;
 var FILE = path.join(DATA, 'bridge.json');
 // What can be ticked: things that can start something on FridgeBoard (a contact sensor, a button, a
-// switch), and what can go on its Smart home card (lights, fans, scenes, scripts, a sensor's reading).
+// switch), and what can go on its Smart home card (lights, fans, scenes, scripts, a sensor's reading, where
+// someone is: a person or a tracker's zone, never their map position).
 // Locks, garage doors and alarms stay out.
-var PICKABLE = /^(binary_sensor|event|button|input_button|input_boolean|switch|light|fan|scene|script|sensor)\./;
+var PICKABLE = /^(binary_sensor|event|button|input_button|input_boolean|switch|light|fan|scene|script|sensor|person|device_tracker)\./;
 // A Smart home tile tapped on FridgeBoard ({"do": { id, verb }}): the service it calls, by the kind of thing
 var DO = { toggle: { light: 'light.toggle', switch: 'switch.toggle', fan: 'fan.toggle', input_boolean: 'input_boolean.toggle' },
   on: { light: 'light.turn_on', switch: 'switch.turn_on', fan: 'fan.turn_on', input_boolean: 'input_boolean.turn_on' },
   off: { light: 'light.turn_off', switch: 'switch.turn_off', fan: 'fan.turn_off', input_boolean: 'input_boolean.turn_off' },
   run: { scene: 'scene.turn_on', script: 'script.turn_on', button: 'button.press', input_button: 'input_button.press' } };
 var COLOUR_MODES = { hs: 1, rgb: 1, rgbw: 1, rgbww: 1, xy: 1 }; // a light showing a colour (not just a shade of white)
-var TILE = /^(light|switch|fan|input_boolean|scene|script|button|input_button|sensor|binary_sensor)\./; // what can be a tile on the shared screen (named and given an icon here)
+var TILE = /^(light|switch|fan|input_boolean|scene|script|button|input_button|sensor|binary_sensor|person|device_tracker)\./; // what can be a tile on the shared screen (named and given an icon here)
 var SENSOR_EVERY = 60000; // a sensor's reading goes to FridgeBoard once a minute at most (a power meter changes every second)
 var RECENT = 20;
 

@@ -3,7 +3,7 @@
 Links this Home Assistant to your FridgeBoard.
 
 - **Sensors and buttons do things on FridgeBoard.** A door sensor on the drawer where the lead lives can start the dog's walk, and end it next time it opens. A button by the food can mark a pet fed. A button on the pill bottle can mark a medicine given. A sensor or a button can tick a chore or a step in a routine.
-- **Your lights and sensors on the shared screen.** Lights, switches, scenes, scripts and sensors go on Home as tiles. Swipe across a light to dim it, tap it to turn it on or off, or tap a scene to run it.
+- **Your lights and sensors on the shared screen.** Lights, switches, scenes, scripts, sensors and people go on Home as tiles. Swipe across a light to dim it, tap it to turn it on or off, or tap a scene to run it.
 - **FridgeBoard tells Home Assistant what happened.** Each chore ticked, routine started or finished, walk, feed and medicine fires a `fridgeboard_event`, for your own automations.
 - **Your automations can do things on FridgeBoard.** Give a medicine, tick a chore, a job or a routine step, add to any list, or put a message on the shared screens.
 
@@ -15,7 +15,7 @@ Step-by-step guides and ready-made blueprints: https://fridgeboard.me/home-assis
 
 1. Start this app, then open **FridgeBoard** in the sidebar.
 2. On your phone, open FridgeBoard, then **Settings › Home Assistant › Get a code**. Type the code into this app's page.
-3. Tick what FridgeBoard may use: sensors and buttons that do something on FridgeBoard, and lights, switches, scenes, scripts and sensors for the shared screen. Nothing is ticked at first, and nothing unticked ever leaves your house.
+3. Tick what FridgeBoard may use: sensors and buttons that do something on FridgeBoard, and lights, switches, scenes, scripts, sensors and people for the shared screen. Nothing is ticked at first, and nothing unticked ever leaves your house.
 4. Back on the phone, under **Settings › Home Assistant**:
    tap **+** by **When something happens** to say what a sensor or a button does.
 5. On the shared screen, open **☰ › Arrange Home** and tap **+**. Under **Smart home**, add a Smart home card (fill its pages from its **⋯**) or any one thing on its own.
@@ -28,6 +28,7 @@ Step-by-step guides and ready-made blueprints: https://fridgeboard.me/home-assis
 | `light` that doesn't dim, `switch`, `fan`, `input_boolean` | a tap turns it on or off |
 | `scene`, `script`, `button`, `input_button` | a tap runs it |
 | `sensor`, `binary_sensor` | it shows the reading (temperature, humidity, a door open or closed) |
+| `person`, `device_tracker` | it shows where they are: Home, Away or the zone they're in (never a map position) |
 
 A tile is 1 by 1, 2 by 1 or 1 by 2. A sensor's reading is sent at most once a minute. Locks, garage doors and alarms can't be tiles. Dimming needs version 0.3.0 of this app.
 

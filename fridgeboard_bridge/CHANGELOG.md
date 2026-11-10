@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.5.0
+
+- People and trackers (`person`, `device_tracker`) can be ticked for the shared screen. Their tile shows Home, Away or the zone they're in. Only the zone goes to FridgeBoard, never a map position, and only when it changes.
+
 ## 0.4.0
 
 - Fans with speeds can have their speed set from the shared screen: swipe across a fan's tile, like dimming a light. It moves between the fan's own speeds.
